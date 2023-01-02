@@ -6,4 +6,6 @@
 
 4.响应式对象修改属性值时，set中trigger()找到收集起来的对应依赖进行触发后再进行当前操作
 
-5.
+5.调用effect会返回runner，它实际上就是effect传入的fn
+
+6.effect(fn,{scheduler})时，首次调用fn，当响应式数据改变时会调用scheduler函数而不是fn

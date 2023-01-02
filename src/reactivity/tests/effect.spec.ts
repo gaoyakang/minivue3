@@ -33,4 +33,27 @@ describe('effect', () => {
         expect(r).toBe("foo");
 
     })
+
+    it("scheduler", () => {
+        let dummy;
+        let run: any;
+        const scheduler = jest.fn(() => {
+            run = runner;
+        })
+        const obj = reactive({ foo: 1 })
+        // 添加scheduler选项
+        const runner = effect(() => {
+            dummy = obj.foo
+        }, { scheduler })
+
+        expect(scheduler).not.toHaveBeenCalled();
+        expect(dummy).toBe(1);
+        // 响应式数据被修改时调用scheduler
+        obj.foo++
+        expect(scheduler).toHaveBeenCalledTimes(1);
+        expect(dummy).toBe(1)
+        run();
+        expect(dummy).toBe(2)
+
+    })
 })
