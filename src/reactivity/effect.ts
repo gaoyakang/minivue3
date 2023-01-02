@@ -83,14 +83,21 @@ export function track(target, key) {
     }
     
     // 将依赖加入，实际存储的就是fn
+    trackEffects(dep)
+}
+
+export function trackEffects(dep){
+    // 如果已经收集过依赖则直接返回
     if(dep.has(activeEffect)) return;
+    // 没有被收集过则将其添加到依赖收集的数组中
+    console.log(activeEffect)
     dep.add(activeEffect)
     
     // activeEffect是依赖对象，deps是依赖对象的一个数组属性，用于存放后续可能会被删除的依赖
     activeEffect.deps.push(dep)
 }
 
-function isTracking(){
+export function isTracking(){
     // if(!activeEffect) return;
     // if(!shouldTrack) return;
     return shouldTrack && activeEffect != undefined;
@@ -101,6 +108,10 @@ function isTracking(){
 export function trigger(target, key){
     let depsMap = targetMap.get(target);
     let dep = depsMap.get(key);
+    triggerEffects(dep)
+}
+
+export function triggerEffects(dep){
     for (const effect of dep) {
         if(effect.scheduler){
             effect.scheduler()
@@ -109,8 +120,6 @@ export function trigger(target, key){
         }
     }
 }
-
-
 
 // effect包裹的内容被自动调用
 export function effect(fn,options: any = {}){

@@ -21,3 +21,5 @@
 10.优化stop()
 
 11.shallowReadonly(obj)后的obj只有第一层是响应式对象
+
+12.ref()后的变量也应该是响应式的，应该通过.value获取值
