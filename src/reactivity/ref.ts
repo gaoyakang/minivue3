@@ -9,6 +9,8 @@ class RefImpl{
     public dep;
     // ref最初传过来的值
     private _rawValue;
+    // 判断是否为ref
+    public __v_isRef = true;
     constructor(value){
         this._rawValue = value;
         // 判断是value是普通型还是引用型
@@ -53,4 +55,12 @@ function trackRefValue(ref){
 
 export function ref(value){
     return new RefImpl(value)
+}
+
+export function isRef(ref){
+    return !!ref.__v_isRef;
+}
+
+export function unRef(ref){
+    return isRef(ref) ? ref.value : ref;
 }
