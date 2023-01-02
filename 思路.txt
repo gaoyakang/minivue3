@@ -1,0 +1,9 @@
+1.原始的js对象obj
+
+2.经过reactive(obj)时，内部通过proxy劫持，添加get和set自动调用方法
+
+3.经过effect(fn)时，fn的内容在get时track()收集起来作为后续代码执行的依赖
+
+4.响应式对象修改属性值时，set中trigger()找到收集起来的对应依赖进行触发后再进行当前操作
+
+5.
