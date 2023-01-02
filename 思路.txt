@@ -23,3 +23,7 @@
 11.shallowReadonly(obj)后的obj只有第一层是响应式对象
 
 12.ref()后的变量也应该是响应式的，应该通过.value获取值
+
+13.isRef()原理是判断传入的ref是否有__v_isRef属性
+
+14.proxyRefs()实现代理ref定义的变量，直接通过.访问而不需要.value
