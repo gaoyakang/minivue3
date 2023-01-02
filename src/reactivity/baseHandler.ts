@@ -1,4 +1,5 @@
 import { track, trigger } from "./effect";
+import { ReactiveFlags } from "./reactive";
 
 // 全局初始化一次，不需要重复调用
 const get =  createGetter();
@@ -8,6 +9,12 @@ const readonlyGet = createGetter(true);
 // 抽离get函数，并且区分是否位readonly模式
 function createGetter(isReadonly = false){
     return function get(target, key){
+        // 用于检测当前target是否为reactive
+        if(key === ReactiveFlags.IS_REACTIVE){
+            return !isReadonly;
+        }else if(key === ReactiveFlags.IS_READONLY){
+            return isReadonly;
+        }
         // Reflect从target中获取对应key的值
         const res = Reflect.get(target, key)
         // readonly模式不能set也就没有必要去收集依赖

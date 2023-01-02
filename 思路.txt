@@ -15,3 +15,5 @@
 7.effect(fn,{onStop})时,会在触发stop时候自动调用onStop函数，本质就是在stop时调用了一次回调
 
 8.readonly(obj)后该obj属性值只能get不能set
+
+9.isReactive(obj)后返回该obj是否为响应式对象，原理是再调用该target的属性时会自动触发get
