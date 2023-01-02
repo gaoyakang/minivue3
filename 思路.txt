@@ -13,3 +13,5 @@
 7.stop(runner)后，响应式对象的属性值修改时不会自动更改，本质是把存在ReactiveEffect依赖对象deps里的依赖删除了
 
 7.effect(fn,{onStop})时,会在触发stop时候自动调用onStop函数，本质就是在stop时调用了一次回调
+
+8.readonly(obj)后该obj属性值只能get不能set
