@@ -1,5 +1,6 @@
+import { isObject } from "../shared";
 import { track, trigger } from "./effect";
-import { ReactiveFlags } from "./reactive";
+import { reactive, readonly, ReactiveFlags } from "./reactive";
 
 // 全局初始化一次，不需要重复调用
 const get =  createGetter();
@@ -17,6 +18,11 @@ function createGetter(isReadonly = false){
         }
         // Reflect从target中获取对应key的值
         const res = Reflect.get(target, key)
+
+        if(isObject(res)){
+            return isReadonly ? readonly(res) : reactive(res)
+        }
+
         // readonly模式不能set也就没有必要去收集依赖
         if(!isReadonly){
             // 依赖收集
