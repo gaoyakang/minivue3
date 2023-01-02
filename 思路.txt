@@ -9,3 +9,7 @@
 5.调用effect会返回runner，它实际上就是effect传入的fn
 
 6.effect(fn,{scheduler})时，首次调用fn，当响应式数据改变时会调用scheduler函数而不是fn
+
+7.stop(runner)后，响应式对象的属性值修改时不会自动更改，本质是把存在ReactiveEffect依赖对象deps里的依赖删除了
+
+7.effect(fn,{onStop})时,会在触发stop时候自动调用onStop函数，本质就是在stop时调用了一次回调

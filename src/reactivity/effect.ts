@@ -1,8 +1,16 @@
+import { extend } from "../shared";
 
 // 对象的依赖
 class ReactiveEffect {
     // fn指的就是reactive()传入的函数
     private _fn: any;
+    // activeEffect是依赖对象，deps是依赖对象的一个数组属性，用于存放后续可能会被删除的依赖
+    deps = []
+    // 为了避免多次调用stop，因为调用一次就已经把依赖删除了，不用多次调用
+    active = true;
+    // onStop是当stop被调用时触发的回调
+    onStop?: () => void;
+
     constructor(fn, public scheduler?){
         this._fn = fn;
     }
@@ -12,6 +20,27 @@ class ReactiveEffect {
         activeEffect = this;
         return this._fn()
     }
+
+    // 删除对应依赖
+    stop(){
+        // 为了避免多次调用stop造成性能影响
+        if(this.active){
+            // 清除依赖
+            cleanupEffect(this)
+            // 调用回调函数onStop
+            if(this.onStop){
+                this.onStop();
+            }
+            this.active = false;
+        }
+    }
+}
+
+// 清除依赖的函数
+function cleanupEffect(effect){
+    effect.deps.forEach((dep: any) => {
+        dep.delete(effect);
+    })
 }
 
 
@@ -42,6 +71,9 @@ export function track(target, key) {
     }
     // 将依赖加入，实际存储的就是fn
     dep.add(activeEffect)
+    if(!activeEffect) return;
+    // activeEffect是依赖对象，deps是依赖对象的一个数组属性，用于存放后续可能会被删除的依赖
+    activeEffect.deps.push(dep)
 }
 
 
@@ -65,12 +97,18 @@ let activeEffect;
 export function effect(fn,options: any = {}){
     // 新建ReactiveEffect是为了使用面向对象编程
     const _effect = new ReactiveEffect(fn, options.scheduler)
+    // 将options内容挂载到_effect上
+    extend(_effect,options)
     // 调用reactive()传入的函数
     _effect.run();
-
-    return _effect.run.bind(_effect);
+    const runner: any = _effect.run.bind(_effect);
+    runner.effect = _effect;// stop中使用
+    return runner
 }
 
 
-
-
+export function stop(runner){
+    // 这里的runner指的是effect返回的run方法，即fn
+    // 之所以能有effect是因为再effect()返回前将effect实例挂载到了runner上了
+    runner.effect.stop();
+}
