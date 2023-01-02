@@ -1,5 +1,8 @@
 import { extend } from "../shared";
 
+
+let activeEffect,shouldTrack;
+
 // 对象的依赖
 class ReactiveEffect {
     // fn指的就是reactive()传入的函数
@@ -17,8 +20,14 @@ class ReactiveEffect {
 
     // 执行reactive()传入的函数
     run(){
+        if(!this.active){
+            return this._fn()
+        }
+        shouldTrack = true;
         activeEffect = this;
-        return this._fn()
+        const result = this._fn()
+        shouldTrack = false;
+        return result;
     }
 
     // 删除对应依赖
@@ -41,6 +50,7 @@ function cleanupEffect(effect){
     effect.deps.forEach((dep: any) => {
         dep.delete(effect);
     })
+    effect.deps.length = 0;
 }
 
 
@@ -53,6 +63,8 @@ function cleanupEffect(effect){
 const targetMap = new Map();
 export function track(target, key) {
     // target -> depsMap -> key
+    
+    if(!isTracking()) return;
     // 1.选择对象
     let depsMap = targetMap.get(target);
     // 初始化时创建depsMap放到targetMap
@@ -69,11 +81,19 @@ export function track(target, key) {
         dep = new Set();
         depsMap.set(key, dep)
     }
+    
     // 将依赖加入，实际存储的就是fn
+    if(dep.has(activeEffect)) return;
     dep.add(activeEffect)
-    if(!activeEffect) return;
+    
     // activeEffect是依赖对象，deps是依赖对象的一个数组属性，用于存放后续可能会被删除的依赖
     activeEffect.deps.push(dep)
+}
+
+function isTracking(){
+    // if(!activeEffect) return;
+    // if(!shouldTrack) return;
+    return shouldTrack && activeEffect != undefined;
 }
 
 
@@ -93,7 +113,6 @@ export function trigger(target, key){
 
 
 // effect包裹的内容被自动调用
-let activeEffect;
 export function effect(fn,options: any = {}){
     // 新建ReactiveEffect是为了使用面向对象编程
     const _effect = new ReactiveEffect(fn, options.scheduler)
