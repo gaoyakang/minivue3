@@ -1,4 +1,4 @@
-import { isObject } from "../shared";
+import { extend, isObject } from "../shared";
 import { track, trigger } from "./effect";
 import { reactive, readonly, ReactiveFlags } from "./reactive";
 
@@ -6,9 +6,10 @@ import { reactive, readonly, ReactiveFlags } from "./reactive";
 const get =  createGetter();
 const set = createSetter();
 const readonlyGet = createGetter(true);
+const shallowReadonlyGet = createGetter(true, true)
 
 // 抽离get函数，并且区分是否位readonly模式
-function createGetter(isReadonly = false){
+function createGetter(isReadonly = false, shallow = false){
     return function get(target, key){
         // 用于检测当前target是否为reactive
         if(key === ReactiveFlags.IS_REACTIVE){
@@ -18,6 +19,10 @@ function createGetter(isReadonly = false){
         }
         // Reflect从target中获取对应key的值
         const res = Reflect.get(target, key)
+        if(shallow){
+            return res;
+        }
+
 
         if(isObject(res)){
             return isReadonly ? readonly(res) : reactive(res)
@@ -65,3 +70,8 @@ export const readonlyHandlers = {
         return true;
     }
 }
+
+// 抽离了只读浅层劫持proxy的处理器
+export const shallowReadonlyHandlers = extend({}, readonlyHandlers, {
+    get:shallowReadonlyGet
+})

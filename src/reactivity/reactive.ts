@@ -1,4 +1,4 @@
-import { mutableHandlers, readonlyHandlers } from "./baseHandler";
+import { mutableHandlers, readonlyHandlers, shallowReadonlyHandlers } from "./baseHandler";
 
 
 export const enum ReactiveFlags {
@@ -19,6 +19,13 @@ export function readonly(raw){
     return createActiveObject(raw,readonlyHandlers)
 }
 
+export function shallowReadonly(raw){
+    // 通过proxy劫持原对象，get/set操作对象属性
+    // 具体逻辑抽离到了baseHandler中
+    return createActiveObject(raw,shallowReadonlyHandlers)
+}
+
+
 function createActiveObject(raw: any, baseHandlers){
     // 通过proxy劫持原对象，get/set操作对象属性
     // 具体逻辑抽离到了baseHandler中
@@ -36,3 +43,6 @@ export function isReadonly(value){
     // 原理是调用该target的属性时会自动触发get
     return !!value[ReactiveFlags.IS_READONLY]
 }
+
+
+

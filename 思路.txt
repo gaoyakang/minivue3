@@ -19,3 +19,5 @@
 9.isReactive(obj)后返回该obj是否为响应式对象，原理是再调用该target的属性时会自动触发get
 
 10.优化stop()
+
+11.shallowReadonly(obj)后的obj只有第一层是响应式对象
