@@ -27,3 +27,6 @@
 13.isRef()原理是判断传入的ref是否有__v_isRef属性
 
 14.proxyRefs()实现代理ref定义的变量，直接通过.访问而不需要.value
+
+15.computed(getter)实现只有当getter中的响应式对象值发生改变时getter才会被重新调用，内部ReactiveEffect采用scheduler模式，首次调用getter，当响应式数据改变时会调用scheduler函数而不是getter
+

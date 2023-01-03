@@ -4,7 +4,7 @@ import { extend } from "../shared";
 let activeEffect,shouldTrack;
 
 // 对象的依赖
-class ReactiveEffect {
+export class ReactiveEffect {
     // fn指的就是reactive()传入的函数
     private _fn: any;
     // activeEffect是依赖对象，deps是依赖对象的一个数组属性，用于存放后续可能会被删除的依赖
