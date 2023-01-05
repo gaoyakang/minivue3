@@ -1,5 +1,6 @@
 import { isObject } from "../shared/index";
 import { createComponentInstance, setupComponent } from "./component";
+import { createVNode } from "./vnode";
 
 export function render(vnode, container) {
   patch(vnode, container);
@@ -18,26 +19,17 @@ function patch(vnode, container) {
 
 //处理component类型的vnode
 function processComponent(vnode, container) {
-  //
   mountComponent(vnode, container);
 }
 
-function mountComponent(vnode: any, container) {
+function mountComponent(initialVNode: any, container) {
   // 创建组件实例(实际是个包含vnode的对象)
-  const instance = createComponentInstance(vnode);
+  const instance = createComponentInstance(initialVNode);
   // 组件实例设置，就是把setup结果和render挂载到组件实例上
   // 相当于为下一步处理组件实例准备数据
   setupComponent(instance);
   // 调用组件实例上的render
-  setupRenderEffect(instance, container);
-}
-
-// 调用组件实例上的render
-function setupRenderEffect(instance: any, container) {
-  // render的内部调用了h(),它实际是createVNode()，即最终返回的是一个vnode
-  const subTree = instance.render();
-  // 递归调用patch，前一次调用实际是生成了App组件的vnode，这次调用是要处理render中的h调用
-  patch(subTree, container);
+  setupRenderEffect(instance, initialVNode, container);
 }
 
 //处理element类型vnode
@@ -47,7 +39,7 @@ function processElement(vnode: any, container: any) {
 
 function mountElement(vnode: any, container: any) {
   // element类型的vnode直接去创建真实的节点
-  const el = document.createElement(vnode.type);
+  const el = (vnode.el = document.createElement(vnode.type));
   // 添加节点内容
   const { children } = vnode;
   // 如果子节点是string，直接添加
@@ -55,7 +47,7 @@ function mountElement(vnode: any, container: any) {
     el.textContent = children;
   } else if (Array.isArray(children)) {
     // 如果子节点是被放到数组里的虚拟节点，则循环调用patch
-    mountChildren(vnode, container);
+    mountChildren(vnode, el);
   }
   // 设置节点属性
   const { props } = vnode;
@@ -72,4 +64,17 @@ function mountChildren(vnode, container) {
   vnode.children.forEach((v) => {
     patch(v, container);
   });
+}
+
+// 调用组件实例上的render
+function setupRenderEffect(instance: any, initialVNode, container) {
+  // 获取代理对象，挂载到render上
+  const { proxy } = instance;
+
+  // render的内部调用了h(),它实际是createVNode()，即最终返回的是一个vnode
+  const subTree = instance.render.call(proxy);
+  // 递归调用patch，前一次调用实际是生成了App组件的vnode，这次调用是要处理render中的h调用
+  patch(subTree, container);
+
+  initialVNode.el = subTree.el;
 }

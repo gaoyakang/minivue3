@@ -34,4 +34,4 @@
 
 17.初始化过程用到了createApp(rootComponent),它实现先把根组件转为虚拟节点，然后渲染虚拟节点，渲染的时候，先把虚拟节点上的数据都挂载到组件实例上,然后触发组件实例上的render，生成实际的vnode子树
 
-18.rollup打包
+18.实现组件代理对象，即在render使用this访问setup中的值，原理是在render的setupRenderEffect时将components的setupStateFulComponent时创建的代理对象绑定上

@@ -1,8 +1,11 @@
+import { PublicInstanceProxyHandlers } from "./componentPublicInstance";
+
 // 根据conponent类型的vnode创建实例
 export function createComponentInstance(vnode: any) {
   const component = {
     vnode,
     type: vnode.type,
+    setupState: {},
   };
   return component;
 }
@@ -18,6 +21,12 @@ export function setupComponent(instance) {
 function setupStateFulComponent(instance: any) {
   // 这里的Component指的是传入的App组件
   const Component = instance.vnode.type;
+  // 为了实现在render中使用this获取全部的属性
+  // 使用代理模式
+  // 在render.ts的setupRenderEffect时触发
+  // 为了实现在render中this访问setup中的值
+  instance.proxy = new Proxy({ _: instance }, PublicInstanceProxyHandlers);
+
   // App组件实际上是一个包含了render和setup的对象
   const { setup } = Component;
   if (setup) {
