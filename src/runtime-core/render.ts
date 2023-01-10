@@ -1,7 +1,5 @@
-import { isObject } from "../shared/index";
 import { ShapeFlags } from "../shared/ShapeFlags";
 import { createComponentInstance, setupComponent } from "./component";
-import { createVNode } from "./vnode";
 
 // 渲染vnode，根据vnode的不同类型将vnode渲染成真实浏览器元素
 // 这里最开始是App根组件的vnode
@@ -56,7 +54,6 @@ function setupRenderEffect(instance: any, initialVNode, container) {
   // 该vnode可能是个component类型，也可能是element类型，需要进一步patch拆解
   // 调用call将代理的setup返回的对象挂到render上
   const subTree = instance.render.call(proxy);
-
   // 递归调用patch，这里的递归是在App组件解析完了后的patch
   patch(subTree, container);
 
@@ -73,10 +70,9 @@ function mountElement(vnode: any, container: any) {
   const el = (vnode.el = document.createElement(vnode.type));
 
   // 2.添加节点内容
-  const { children } = vnode;
+  const { children, shapeFlag } = vnode;
   // 如果子节点是string，直接添加，说明该内容就是节点终点
-  const { shapeFlag } = vnode;
-  if (shapeFlag & ShapeFlags.ELEMENT) {
+  if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
     el.textContent = children;
   } else if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
     // 如果子节点是被放到数组里的虚拟节点，说明el下面还有新的节点，则循环调用patch

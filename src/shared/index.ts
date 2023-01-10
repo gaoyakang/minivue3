@@ -1,9 +1,12 @@
 export const extend = Object.assign;
 
 export const isObject = (val) => {
-    return val != undefined && typeof val === "object"
-}
+  return val != undefined && typeof val === "object";
+};
 
 export const hasChanged = (val, newVal) => {
-    return !Object.is(val,newVal)
-}
+  return !Object.is(val, newVal);
+};
+
+export const hasOwn = (val, key) =>
+  Object.prototype.hasOwnProperty.call(val, key);

@@ -1,3 +1,5 @@
+import { shallowReadonly } from "../reactivity/reactive";
+import { initProps } from "./componentProps";
 import { PublicInstanceProxyHandlers } from "./componentPublicInstance";
 
 // 根据conponent类型的vnode创建组件实例
@@ -6,14 +8,16 @@ export function createComponentInstance(vnode: any) {
   const component = {
     vnode,
     type: vnode.type,
-    setupState: {}, // 数据相关
+    setupState: {}, // setup数据相关
+    props: {}, // setup的pros传参
   };
   return component;
 }
 
 // 把组件对象上的setup结果和render挂载到组件实例上
 export function setupComponent(instance) {
-  // initProps()
+  // 将props挂载到实例
+  initProps(instance, instance.vnode.props);
   // initSlots()
   // 设置组件状态
   setupStateFulComponent(instance);
@@ -33,7 +37,7 @@ function setupStateFulComponent(instance: any) {
   const { setup } = Component;
   if (setup) {
     // setup执行完就会返回一个对象，这个例子中包含msg变量
-    const setupResult = setup();
+    const setupResult = setup(shallowReadonly(instance.props));
     // 处理setup执行的结果
     handleSetupResult(instance, setupResult);
   }
