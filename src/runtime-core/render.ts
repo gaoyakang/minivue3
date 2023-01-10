@@ -1,35 +1,66 @@
 import { isObject } from "../shared/index";
+import { ShapeFlags } from "../shared/ShapeFlags";
 import { createComponentInstance, setupComponent } from "./component";
 import { createVNode } from "./vnode";
 
+// 渲染vnode，根据vnode的不同类型将vnode渲染成真实浏览器元素
+// 这里最开始是App根组件的vnode
 export function render(vnode, container) {
+  // 为了后续递归调用这里拆分出了patch逻辑
   patch(vnode, container);
 }
 
 // 为了后续递归调用这里拆分出了patch逻辑
 function patch(vnode, container) {
-  if (typeof vnode.type === "string") {
-    // 判断vnode是不是一个element
+  // vnode可能是通过传入组件对象创建
+  // 也可能是通过传入html标签名称创建
+
+  // vnode是通过传入html标签名称创建
+  const { shapeFlag } = vnode;
+  if (shapeFlag & ShapeFlags.ELEMENT) {
     processElement(vnode, container);
-  } else if (isObject(vnode.type)) {
-    //处理component类型
+  } else if (shapeFlag & ShapeFlags.STATEFUL_COMPONENT) {
+    // vnode是通过传入组件对象创建(比如最开始的根组件)
     processComponent(vnode, container);
   }
 }
 
-//处理component类型的vnode
+// 处理component类型的vnode
 function processComponent(vnode, container) {
+  // 挂载过程
   mountComponent(vnode, container);
 }
 
+// component类型的vnode挂载过程
 function mountComponent(initialVNode: any, container) {
   // 创建组件实例(实际是个包含vnode的对象)
+  // 后期可能会调用与组件相关的内容，所以抽象出组件实例
   const instance = createComponentInstance(initialVNode);
-  // 组件实例设置，就是把setup结果和render挂载到组件实例上
+
+  // 组件实例设置
+  // 就是把组件对象上的setup结果和render挂载到组件实例上
   // 相当于为下一步处理组件实例准备数据
   setupComponent(instance);
-  // 调用组件实例上的render
+
+  // 调用组件实例上的render(根组件里面创建html节点)
   setupRenderEffect(instance, initialVNode, container);
+}
+
+// 调用组件实例上的render并且将代理的setup返回的对象挂到render上
+function setupRenderEffect(instance: any, initialVNode, container) {
+  // 获取组件对象setup返回的对象的代理对象，挂载到render上
+  // 这样render中就能访问到setup中的数据
+  const { proxy } = instance;
+
+  // render的内部调用了h(),它实际是createVNode()，即最终返回的是一个vnode
+  // 该vnode可能是个component类型，也可能是element类型，需要进一步patch拆解
+  // 调用call将代理的setup返回的对象挂到render上
+  const subTree = instance.render.call(proxy);
+
+  // 递归调用patch，这里的递归是在App组件解析完了后的patch
+  patch(subTree, container);
+
+  initialVNode.el = subTree.el;
 }
 
 //处理element类型vnode
@@ -38,43 +69,33 @@ function processElement(vnode: any, container: any) {
 }
 
 function mountElement(vnode: any, container: any) {
-  // element类型的vnode直接去创建真实的节点
+  // 1.element类型的vnode直接去创建真实的节点
   const el = (vnode.el = document.createElement(vnode.type));
-  // 添加节点内容
+
+  // 2.添加节点内容
   const { children } = vnode;
-  // 如果子节点是string，直接添加
-  if (typeof children === "string") {
+  // 如果子节点是string，直接添加，说明该内容就是节点终点
+  const { shapeFlag } = vnode;
+  if (shapeFlag & ShapeFlags.ELEMENT) {
     el.textContent = children;
-  } else if (Array.isArray(children)) {
-    // 如果子节点是被放到数组里的虚拟节点，则循环调用patch
+  } else if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+    // 如果子节点是被放到数组里的虚拟节点，说明el下面还有新的节点，则循环调用patch
     mountChildren(vnode, el);
   }
-  // 设置节点属性
+
+  // 3.设置节点属性
   const { props } = vnode;
   for (const key in props) {
     const val = props[key];
     el.setAttribute(key, val);
   }
-  // 将创建好的元素添加到页面
+  // 4.将创建好的元素添加到页面
   container.append(el);
 }
 
-// 如果子节点是被放到数组里的虚拟节点，则循环调用patch
+// 如果子节点是被放到数组里的虚拟节点，，说明el下面还有新的节点，则循环调用patch
 function mountChildren(vnode, container) {
   vnode.children.forEach((v) => {
     patch(v, container);
   });
-}
-
-// 调用组件实例上的render
-function setupRenderEffect(instance: any, initialVNode, container) {
-  // 获取代理对象，挂载到render上
-  const { proxy } = instance;
-
-  // render的内部调用了h(),它实际是createVNode()，即最终返回的是一个vnode
-  const subTree = instance.render.call(proxy);
-  // 递归调用patch，前一次调用实际是生成了App组件的vnode，这次调用是要处理render中的h调用
-  patch(subTree, container);
-
-  initialVNode.el = subTree.el;
 }

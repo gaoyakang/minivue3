@@ -1,15 +1,17 @@
 import { PublicInstanceProxyHandlers } from "./componentPublicInstance";
 
-// 根据conponent类型的vnode创建实例
+// 根据conponent类型的vnode创建组件实例
+// 后期可能会调用与组件相关的内容，所以抽象出组件实例
 export function createComponentInstance(vnode: any) {
   const component = {
     vnode,
     type: vnode.type,
-    setupState: {},
+    setupState: {}, // 数据相关
   };
   return component;
 }
 
+// 把组件对象上的setup结果和render挂载到组件实例上
 export function setupComponent(instance) {
   // initProps()
   // initSlots()
