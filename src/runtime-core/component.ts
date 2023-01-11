@@ -2,6 +2,7 @@ import { shallowReadonly } from "../reactivity/reactive";
 import { emit } from "./componentEmit";
 import { initProps } from "./componentProps";
 import { PublicInstanceProxyHandlers } from "./componentPublicInstance";
+import { initSlots } from "./componentSlots";
 
 // 根据conponent类型的vnode创建组件实例
 // 后期可能会调用与组件相关的内容，所以抽象出组件实例
@@ -12,6 +13,7 @@ export function createComponentInstance(vnode: any) {
     setupState: {}, // setup数据相关
     props: {}, // setup的pros传参
     emit: () => {}, // 组件间事件传递
+    slots: {}, //插槽
   };
   component.emit = emit.bind(null, component) as any;
   return component;
@@ -21,7 +23,8 @@ export function createComponentInstance(vnode: any) {
 export function setupComponent(instance) {
   // 将props挂载到实例
   initProps(instance, instance.vnode.props);
-  // initSlots()
+  // 将slots挂载到实例
+  initSlots(instance, instance.vnode.children);
   // 设置组件状态
   setupStateFulComponent(instance);
 }
