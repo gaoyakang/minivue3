@@ -6,7 +6,8 @@ import { initSlots } from "./componentSlots";
 
 // 根据conponent类型的vnode创建组件实例
 // 后期可能会调用与组件相关的内容，所以抽象出组件实例
-export function createComponentInstance(vnode: any) {
+export function createComponentInstance(vnode: any, parent) {
+  console.log("createComponentinstance", parent);
   const component = {
     vnode,
     type: vnode.type,
@@ -14,6 +15,8 @@ export function createComponentInstance(vnode: any) {
     props: {}, // setup的pros传参
     emit: () => {}, // 组件间事件传递
     slots: {}, //插槽
+    providers: parent ? parent.providers : {}, // 提供类似vuex的存取功能
+    parent,
   };
   component.emit = emit.bind(null, component) as any;
   return component;

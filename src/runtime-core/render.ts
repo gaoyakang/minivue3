@@ -6,11 +6,11 @@ import { Fragment, Text } from "./vnode";
 // 这里最开始是App根组件的vnode
 export function render(vnode, container) {
   // 为了后续递归调用这里拆分出了patch逻辑
-  patch(vnode, container);
+  patch(vnode, container, null);
 }
 
 // 为了后续递归调用这里拆分出了patch逻辑
-function patch(vnode, container) {
+function patch(vnode, container, parentComponent) {
   // vnode可能是通过传入组件对象创建
   // 也可能是通过传入html标签名称创建
 
@@ -18,33 +18,33 @@ function patch(vnode, container) {
   const { type, shapeFlag } = vnode;
   switch (type) {
     case Fragment:
-      processFragment(vnode, container);
+      processFragment(vnode, container, parentComponent);
       break;
     case Text:
       processText(vnode, container);
       break;
     default:
       if (shapeFlag & ShapeFlags.ELEMENT) {
-        processElement(vnode, container);
+        processElement(vnode, container, parentComponent);
       } else if (shapeFlag & ShapeFlags.STATEFUL_COMPONENT) {
         // vnode是通过传入组件对象创建(比如最开始的根组件)
-        processComponent(vnode, container);
+        processComponent(vnode, container, parentComponent);
       }
       break;
   }
 }
 
 // 处理component类型的vnode
-function processComponent(vnode, container) {
+function processComponent(vnode, container, parentComponent) {
   // 挂载过程
-  mountComponent(vnode, container);
+  mountComponent(vnode, container, parentComponent);
 }
 
 // component类型的vnode挂载过程
-function mountComponent(initialVNode: any, container) {
+function mountComponent(initialVNode: any, container, parentComponent) {
   // 创建组件实例(实际是个包含vnode的对象)
   // 后期可能会调用与组件相关的内容，所以抽象出组件实例
-  const instance = createComponentInstance(initialVNode);
+  const instance = createComponentInstance(initialVNode, parentComponent);
 
   // 组件实例设置
   // 就是把组件对象上的setup结果和render挂载到组件实例上
@@ -66,17 +66,17 @@ function setupRenderEffect(instance: any, initialVNode, container) {
   // 调用call将代理的setup返回的对象挂到render上
   const subTree = instance.render.call(proxy);
   // 递归调用patch，这里的递归是在App组件解析完了后的patch
-  patch(subTree, container);
+  patch(subTree, container, instance);
 
   initialVNode.el = subTree.el;
 }
 
 //处理element类型vnode
-function processElement(vnode: any, container: any) {
-  mountElement(vnode, container);
+function processElement(vnode: any, container: any, parentComponent) {
+  mountElement(vnode, container, parentComponent);
 }
 
-function mountElement(vnode: any, container: any) {
+function mountElement(vnode: any, container: any, parentComponent) {
   // 1.element类型的vnode直接去创建真实的节点
   const el = (vnode.el = document.createElement(vnode.type));
 
@@ -87,7 +87,7 @@ function mountElement(vnode: any, container: any) {
     el.textContent = children;
   } else if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
     // 如果子节点是被放到数组里的虚拟节点，说明el下面还有新的节点，则循环调用patch
-    mountChildren(vnode, el);
+    mountChildren(vnode, el, parentComponent);
   }
 
   // 3.设置节点属性
@@ -109,15 +109,15 @@ function mountElement(vnode: any, container: any) {
 }
 
 // 如果子节点是被放到数组里的虚拟节点，，说明el下面还有新的节点，则循环调用patch
-function mountChildren(vnode, container) {
+function mountChildren(vnode, container, parentComponent) {
   vnode.children.forEach((v) => {
-    patch(v, container);
+    patch(v, container, parentComponent);
   });
 }
 
 // 处理fragment类型节点
-function processFragment(vnode: any, container: any) {
-  mountChildren(vnode, container);
+function processFragment(vnode: any, container: any, parentComponent) {
+  mountChildren(vnode, container, parentComponent);
 }
 
 // 处理text类型节点
