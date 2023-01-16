@@ -42,10 +42,13 @@ function setupStateFulComponent(instance: any) {
   // App组件实际上是一个包含了render和setup的对象
   const { setup } = Component;
   if (setup) {
+    setCurrentInstance(instance);
     // setup执行完就会返回一个对象，这个例子中包含msg变量
     const setupResult = setup(shallowReadonly(instance.props), {
       emit: instance.emit,
     });
+    setCurrentInstance(null);
+
     // 处理setup执行的结果
     handleSetupResult(instance, setupResult);
   }
@@ -65,4 +68,14 @@ function finishComponentSetup(instance: any) {
   const Component = instance.type;
   // 将render挂载到组件实例上
   instance.render = Component.render;
+}
+
+// 获取当前实例
+let currentInstance = null;
+export function getCurrentInstance() {
+  return currentInstance;
+}
+
+export function setCurrentInstance(instance) {
+  currentInstance = instance;
 }
