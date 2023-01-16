@@ -1,5 +1,6 @@
 import { ShapeFlags } from "../shared/ShapeFlags";
 import { createComponentInstance, setupComponent } from "./component";
+import { Fragment, Text } from "./vnode";
 
 // 渲染vnode，根据vnode的不同类型将vnode渲染成真实浏览器元素
 // 这里最开始是App根组件的vnode
@@ -14,12 +15,22 @@ function patch(vnode, container) {
   // 也可能是通过传入html标签名称创建
 
   // vnode是通过传入html标签名称创建
-  const { shapeFlag } = vnode;
-  if (shapeFlag & ShapeFlags.ELEMENT) {
-    processElement(vnode, container);
-  } else if (shapeFlag & ShapeFlags.STATEFUL_COMPONENT) {
-    // vnode是通过传入组件对象创建(比如最开始的根组件)
-    processComponent(vnode, container);
+  const { type, shapeFlag } = vnode;
+  switch (type) {
+    case Fragment:
+      processFragment(vnode, container);
+      break;
+    case Text:
+      processText(vnode, container);
+      break;
+    default:
+      if (shapeFlag & ShapeFlags.ELEMENT) {
+        processElement(vnode, container);
+      } else if (shapeFlag & ShapeFlags.STATEFUL_COMPONENT) {
+        // vnode是通过传入组件对象创建(比如最开始的根组件)
+        processComponent(vnode, container);
+      }
+      break;
   }
 }
 
@@ -102,4 +113,16 @@ function mountChildren(vnode, container) {
   vnode.children.forEach((v) => {
     patch(v, container);
   });
+}
+
+// 处理fragment类型节点
+function processFragment(vnode: any, container: any) {
+  mountChildren(vnode, container);
+}
+
+// 处理text类型节点
+function processText(vnode: any, container: any) {
+  const { children } = vnode;
+  const textNode = (vnode.el = document.createTextNode(children));
+  container.append(textNode);
 }

@@ -2,6 +2,9 @@
 
 import { ShapeFlags } from "../shared/ShapeFlags";
 
+export const Fragment = Symbol("Fragment");
+export const Text = Symbol("Text");
+
 // type：需要处理的是什么类型component还是element
 export function createVNode(type, props?, children?) {
   const vnode = {
@@ -32,4 +35,9 @@ function getShapeFlag(type) {
   return typeof type === "string"
     ? ShapeFlags.ELEMENT
     : ShapeFlags.STATEFUL_COMPONENT;
+}
+
+// 创建文本vnode
+export function createTextVNode(text: string) {
+  return createVNode(Text, {}, text);
 }

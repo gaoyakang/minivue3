@@ -1,4 +1,4 @@
-import { h } from "../../lib/guide-mini-vue.esm.js";
+import { h, createTextVNode } from "../../lib/guide-mini-vue.esm.js";
 import { Foo } from "./Foo.js";
 
 export const App = {
@@ -26,15 +26,27 @@ export const App = {
     // );
 
     // 4.app中获取foo内部值:作用域插槽
+    // const foo = h(
+    //   Foo,
+    //   {},
+    //   {
+    //     header: ({ age }) => h("p", {}, "header" + age),
+    //     footer: () => h("p", {}, "footer"),
+    //   }
+    // );
+
+    // 5.插槽中渲染文本
     const foo = h(
       Foo,
       {},
       {
-        header: ({ age }) => h("p", {}, "header" + age),
+        header: ({ age }) => [
+          h("p", {}, "header" + age),
+          createTextVNode("你好呀"),
+        ],
         footer: () => h("p", {}, "footer"),
       }
     );
-
     return h("div", {}, [app, foo]);
   },
   setup() {
