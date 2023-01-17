@@ -1,3 +1,4 @@
+import { proxyRefs } from "../reactivity";
 import { shallowReadonly } from "../reactivity/reactive";
 import { emit } from "./componentEmit";
 import { initProps } from "./componentProps";
@@ -17,6 +18,8 @@ export function createComponentInstance(vnode: any, parent) {
     slots: {}, //插槽
     providers: parent ? parent.providers : {}, // 提供类似vuex的存取功能
     parent,
+    isMounted: false, //更新还是初始化节点,
+    // subTree: null, //上次节点
   };
   component.emit = emit.bind(null, component) as any;
   return component;
@@ -61,7 +64,7 @@ function handleSetupResult(instance, setupResult: any) {
   // 如果setup最终返回的是一个对象
   if (typeof setupResult === "object") {
     // 将setup执行返回的结果挂载到组件实例上
-    instance.setupState = setupResult;
+    instance.setupState = proxyRefs(setupResult);
   }
   // 完成组件实例设置
   finishComponentSetup(instance);
