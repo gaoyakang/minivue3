@@ -7,7 +7,7 @@ import { Fragment, Text } from "./vnode";
 
 // 依靠渲染器实现不同平台注入
 export function createRender(options) {
-  const { createElement, patchProp, insert } = options;
+  const { createElement, patchProp, insert, remove, setElementText } = options;
 
   // 渲染vnode，根据vnode的不同类型将vnode渲染成真实浏览器元素
   // 这里最开始是App根组件的vnode
@@ -115,19 +115,58 @@ export function createRender(options) {
       mountElement(n2, container, parentComponent);
     } else {
       // 有老节点那就对比更新
-      patchElement(n1, n2, container);
+      patchElement(n1, n2, container, parentComponent);
     }
   }
 
   // 更新比对节点
-  function patchElement(n1, n2, container) {
+  function patchElement(n1, n2, container, parentComponent) {
     console.log("patchElement");
     // console.log("n1", n1);
     // console.log("n2", n2);
     const oldProps = n1.props || EMPTY_OBJ;
     const newProps = n2.props || EMPTY_OBJ;
     const el = (n2.el = n1.el);
+    // 更新子节点
+    patchChildren(n1, n2, el, parentComponent);
+    // 更新属性
     patchProps(el, oldProps, newProps);
+  }
+
+  //更新子节点
+  function patchChildren(n1, n2, container, parentComponent) {
+    const prevShapeFlag = n1.shapeFlag;
+    const c1 = n1.children;
+
+    const { shapeFlag } = n2;
+    const c2 = n2.children;
+
+    if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
+      if (prevShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
+        // ArrayToText
+        // 1.把老的children清空
+        unmountChildren(n1.children);
+      }
+
+      if (c1 != c2) {
+        // TextToText
+        // 2.设置text
+        setElementText(container, c2);
+      }
+    } else {
+      // TextToArray
+      if (prevShapeFlag & ShapeFlags.TEXT_CHILDREN) {
+        setElementText(container, "");
+        mountChildren(c2, container, parentComponent);
+      }
+    }
+  }
+
+  function unmountChildren(children) {
+    for (let i = 0; i < children.length; i++) {
+      const el = children[i].el;
+      remove(el);
+    }
   }
   // 更新props
   function patchProps(el, oldProps, newProps) {
@@ -159,7 +198,7 @@ export function createRender(options) {
       el.textContent = children;
     } else if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
       // 如果子节点是被放到数组里的虚拟节点，说明el下面还有新的节点，则循环调用patch
-      mountChildren(n1, el, parentComponent);
+      mountChildren(n1.children, el, parentComponent);
     }
 
     // 3.设置节点属性
@@ -175,15 +214,15 @@ export function createRender(options) {
   }
 
   // 如果子节点是被放到数组里的虚拟节点，，说明el下面还有新的节点，则循环调用patch
-  function mountChildren(n1, container, parentComponent) {
-    n1.children.forEach((v) => {
+  function mountChildren(children, container, parentComponent) {
+    children.forEach((v) => {
       patch(null, v, container, parentComponent);
     });
   }
 
   // 处理fragment类型节点
   function processFragment(n1: any, n2, container: any, parentComponent) {
-    mountChildren(n1, container, parentComponent);
+    mountChildren(n2.children, container, parentComponent);
   }
 
   // 处理text类型节点
