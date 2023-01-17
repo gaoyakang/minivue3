@@ -1,4 +1,5 @@
 import { effect } from "../reactivity/effect";
+import { EMPTY_OBJ } from "../shared";
 import { ShapeFlags } from "../shared/ShapeFlags";
 import { createComponentInstance, setupComponent } from "./component";
 import { createAppAPI } from "./createApp";
@@ -123,8 +124,30 @@ export function createRender(options) {
     console.log("patchElement");
     // console.log("n1", n1);
     // console.log("n2", n2);
+    const oldProps = n1.props || EMPTY_OBJ;
+    const newProps = n2.props || EMPTY_OBJ;
+    const el = (n2.el = n1.el);
+    patchProps(el, oldProps, newProps);
   }
-
+  // 更新props
+  function patchProps(el, oldProps, newProps) {
+    if (oldProps != newProps) {
+      for (const key in newProps) {
+        const prevProp = oldProps[key];
+        const nextProp = newProps[key];
+        if (prevProp != nextProp) {
+          patchProp(el, key, prevProp, nextProp);
+        }
+      }
+      if (oldProps != EMPTY_OBJ) {
+        for (const key in oldProps) {
+          if (!(key in newProps)) {
+            patchProp(el, key, oldProps[key], null);
+          }
+        }
+      }
+    }
+  }
   function mountElement(n1: any, container: any, parentComponent) {
     // 1.element类型的vnode直接去创建真实的节点
     const el = (n1.el = createElement(n1.type));
@@ -144,7 +167,7 @@ export function createRender(options) {
     for (const key in props) {
       const val = props[key];
       // 处理事件和属性
-      patchProp(el, key, val);
+      patchProp(el, key, null, val);
     }
     // 4.将创建好的元素添加到页面
     // container.append(el);
