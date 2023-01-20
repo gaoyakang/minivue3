@@ -13,11 +13,11 @@ export function createRender(options) {
   // 这里最开始是App根组件的vnode
   function render(vnode, container) {
     // 为了后续递归调用这里拆分出了patch逻辑
-    patch(null, vnode, container, null);
+    patch(null, vnode, container, null, null);
   }
 
   // 为了后续递归调用这里拆分出了patch逻辑
-  function patch(n1, n2, container, parentComponent) {
+  function patch(n1, n2, container, parentComponent, anchor) {
     // vnode可能是通过传入组件对象创建
     // 也可能是通过传入html标签名称创建
 
@@ -25,30 +25,35 @@ export function createRender(options) {
     const { type, shapeFlag } = n2;
     switch (type) {
       case Fragment:
-        processFragment(n1, n2, container, parentComponent);
+        processFragment(n1, n2, container, parentComponent, anchor);
         break;
       case Text:
         processText(n1, n2, container);
         break;
       default:
         if (shapeFlag & ShapeFlags.ELEMENT) {
-          processElement(n1, n2, container, parentComponent);
+          processElement(n1, n2, container, parentComponent, anchor);
         } else if (shapeFlag & ShapeFlags.STATEFUL_COMPONENT) {
           // vnode是通过传入组件对象创建(比如最开始的根组件)
-          processComponent(n1, n2, container, parentComponent);
+          processComponent(n1, n2, container, parentComponent, anchor);
         }
         break;
     }
   }
 
   // 处理component类型的vnode
-  function processComponent(n1, n2, container, parentComponent) {
+  function processComponent(n1, n2, container, parentComponent, anchor) {
     // 挂载过程
-    mountComponent(n2, container, parentComponent);
+    mountComponent(n2, container, parentComponent, anchor);
   }
 
   // component类型的vnode挂载过程
-  function mountComponent(initialVNode: any, container, parentComponent) {
+  function mountComponent(
+    initialVNode: any,
+    container,
+    parentComponent,
+    anchor
+  ) {
     // 创建组件实例(实际是个包含vnode的对象)
     // 后期可能会调用与组件相关的内容，所以抽象出组件实例
     const instance = createComponentInstance(initialVNode, parentComponent);
@@ -59,17 +64,17 @@ export function createRender(options) {
     setupComponent(instance);
 
     // 调用组件实例上的render(根组件里面创建html节点)
-    setupRenderEffect(instance, initialVNode, container);
+    setupRenderEffect(instance, initialVNode, container, anchor);
   }
 
   // 调用组件实例上的render并且将代理的setup返回的对象挂到render上
-  function setupRenderEffect(instance: any, initialVNode, container) {
+  function setupRenderEffect(instance: any, initialVNode, container, anchor) {
     // 当setup数据变化，render中的视图也要变化
     // effect先收集相关依赖，等修改值时自动触发依赖
     effect(() => {
       // 初始化节点
       if (!instance.isMounted) {
-        console.log("init");
+        // console.log("init");
 
         // 获取组件对象setup返回的对象的代理对象，挂载到render上
         // 这样render中就能访问到setup中的数据
@@ -81,7 +86,7 @@ export function createRender(options) {
         const subTree = (instance.subTree = instance.render.call(proxy));
 
         // 递归调用patch，这里的递归是在App组件解析完了后的patch
-        patch(null, subTree, container, instance);
+        patch(null, subTree, container, instance, anchor);
 
         initialVNode.el = subTree.el;
 
@@ -89,7 +94,7 @@ export function createRender(options) {
         instance.isMounted = true;
       } else {
         // 更新节点
-        console.log("update");
+        // console.log("update");
         // 获取组件对象setup返回的对象的代理对象，挂载到render上
         // 这样render中就能访问到setup中的数据
         const { proxy } = instance;
@@ -103,62 +108,154 @@ export function createRender(options) {
         // console.log("subtree:", subTree);
         // console.log("prevSubTree:", prevSubTree);
 
-        patch(prevSubTree, subTree, container, instance);
+        patch(prevSubTree, subTree, container, instance, anchor);
       }
     });
   }
 
   //处理element类型vnode
-  function processElement(n1: any, n2, container: any, parentComponent) {
+  function processElement(
+    n1: any,
+    n2,
+    container: any,
+    parentComponent,
+    anchor
+  ) {
     // 没有老节点那就初始化
     if (!n1) {
-      mountElement(n2, container, parentComponent);
+      mountElement(n2, container, parentComponent, anchor);
     } else {
       // 有老节点那就对比更新
-      patchElement(n1, n2, container, parentComponent);
+      patchElement(n1, n2, container, parentComponent, anchor);
     }
   }
 
   // 更新比对节点
-  function patchElement(n1, n2, container, parentComponent) {
-    console.log("patchElement");
+  function patchElement(n1, n2, container, parentComponent, anchor) {
+    // console.log("patchElement");
     // console.log("n1", n1);
     // console.log("n2", n2);
     const oldProps = n1.props || EMPTY_OBJ;
     const newProps = n2.props || EMPTY_OBJ;
     const el = (n2.el = n1.el);
     // 更新子节点
-    patchChildren(n1, n2, el, parentComponent);
+    patchChildren(n1, n2, el, parentComponent, anchor);
     // 更新属性
     patchProps(el, oldProps, newProps);
   }
 
   //更新子节点
-  function patchChildren(n1, n2, container, parentComponent) {
+  function patchChildren(n1, n2, container, parentComponent, anchor) {
+    // n1老的节点，n2新的节点
     const prevShapeFlag = n1.shapeFlag;
     const c1 = n1.children;
 
     const { shapeFlag } = n2;
     const c2 = n2.children;
 
+    // n2新节点的children是文本类型
     if (shapeFlag & ShapeFlags.TEXT_CHILDREN) {
+      // n1老节点的children是数组类型，即数组换文本
       if (prevShapeFlag & ShapeFlags.ARRAY_CHILDREN) {
         // ArrayToText
-        // 1.把老的children清空
+        // 1.把老的数组类型children清空
         unmountChildren(n1.children);
       }
-
+      // n1老节点的children是文本类型，即文本换文本
       if (c1 != c2) {
-        // TextToText
-        // 2.设置text
+        // TextToText和ArrayToText都用了这里文本替代的逻辑
+        // 2.将新的文本类型children设置text
         setElementText(container, c2);
       }
+      // =================上面类型是：旧节点是文本或数组，新节点是文本==============
+
+      // =================下面类型是：旧节点是文本或数组，新节点是数组==============
     } else {
       // TextToArray
+      // n1老节点的children是文本类型，即数组换文本
+      // n2新节点的children是数组类型
       if (prevShapeFlag & ShapeFlags.TEXT_CHILDREN) {
+        // 先把老节点的文本清空
         setElementText(container, "");
-        mountChildren(c2, container, parentComponent);
+        // 将新节点换成数组类型
+        mountChildren(c2, container, parentComponent, anchor);
+      } else {
+        // ArrayToArray
+        // n1老节点的children是数组类型
+        // n2新节点的children是数组类型
+        patchKeyedChildren(c1, c2, container, parentComponent, anchor);
       }
+    }
+  }
+
+  // ArrayToArray双端对比算法
+  function patchKeyedChildren(
+    c1,
+    c2,
+    container,
+    parentComponent,
+    parentAnchor
+  ) {
+    const l2 = c2.length;
+    let i = 0;
+    let e1 = c1.length - 1;
+    let e2 = l2 - 1;
+    function isSomeVNodeType(n1, n2) {
+      return n1.type === n2.type && n1.key === n2.key;
+    }
+
+    // 1.左侧对比
+    while (i <= e1 && i <= e2) {
+      const n1 = c1[i];
+      const n2 = c2[i];
+
+      // 如果新老节点的children中2个虚拟节点一样
+      if (isSomeVNodeType(n1, n2)) {
+        patch(n1, n2, container, parentComponent, parentAnchor);
+      } else {
+        // 如果新老节点的children中2个虚拟节点不一样
+        // 说明已经找到左侧位置，需要退出循环，记录此时的i位置
+        break;
+      }
+      i++;
+    }
+
+    // 2.右侧对比
+    while (i <= e1 && i <= e2) {
+      const n1 = c1[e1];
+      const n2 = c2[e2];
+
+      // 如果新老节点的children中2个虚拟节点一样
+      if (isSomeVNodeType(n1, n2)) {
+        patch(n1, n2, container, parentComponent, parentAnchor);
+      } else {
+        // 如果新老节点的children中2个虚拟节点不一样
+        // 说明已经找到右侧位置，需要退出循环，记录此时的e1和e2位置
+        break;
+      }
+      e1--;
+      e2--;
+    }
+    // console.log(i, e1, e2);
+
+    // 3.新的比老的长左侧(前面只是比对找出位置，这里多出来的还需要创建)
+    if (i > e1) {
+      if (i <= e2) {
+        const nextPos = e2 + 1;
+        const anchor = nextPos < l2 ? c2[nextPos].el : null;
+        while (i <= e2) {
+          patch(null, c2[i], container, parentComponent, anchor);
+          i++;
+        }
+      }
+    } else if (i > e2) {
+      // 5.老的比新的长(左侧)删除
+      while (i <= e1) {
+        remove(c1[i].el);
+        i++;
+      }
+    } else {
+      // 中间乱序
     }
   }
 
@@ -187,7 +284,7 @@ export function createRender(options) {
       }
     }
   }
-  function mountElement(n1: any, container: any, parentComponent) {
+  function mountElement(n1: any, container: any, parentComponent, anchor) {
     // 1.element类型的vnode直接去创建真实的节点
     const el = (n1.el = createElement(n1.type));
 
@@ -198,7 +295,7 @@ export function createRender(options) {
       el.textContent = children;
     } else if (shapeFlag & ShapeFlags.ARRAY_CHILDREN) {
       // 如果子节点是被放到数组里的虚拟节点，说明el下面还有新的节点，则循环调用patch
-      mountChildren(n1.children, el, parentComponent);
+      mountChildren(n1.children, el, parentComponent, anchor);
     }
 
     // 3.设置节点属性
@@ -210,19 +307,25 @@ export function createRender(options) {
     }
     // 4.将创建好的元素添加到页面
     // container.append(el);
-    insert(el, container);
+    insert(el, container, anchor);
   }
 
   // 如果子节点是被放到数组里的虚拟节点，，说明el下面还有新的节点，则循环调用patch
-  function mountChildren(children, container, parentComponent) {
+  function mountChildren(children, container, parentComponent, anchor) {
     children.forEach((v) => {
-      patch(null, v, container, parentComponent);
+      patch(null, v, container, parentComponent, anchor);
     });
   }
 
   // 处理fragment类型节点
-  function processFragment(n1: any, n2, container: any, parentComponent) {
-    mountChildren(n2.children, container, parentComponent);
+  function processFragment(
+    n1: any,
+    n2,
+    container: any,
+    parentComponent,
+    anchor
+  ) {
+    mountChildren(n2.children, container, parentComponent, anchor);
   }
 
   // 处理text类型节点

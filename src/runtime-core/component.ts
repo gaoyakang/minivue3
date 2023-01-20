@@ -8,7 +8,7 @@ import { initSlots } from "./componentSlots";
 // 根据conponent类型的vnode创建组件实例
 // 后期可能会调用与组件相关的内容，所以抽象出组件实例
 export function createComponentInstance(vnode: any, parent) {
-  console.log("createComponentinstance", parent);
+  // console.log("createComponentinstance", parent);
   const component = {
     vnode,
     type: vnode.type,
