@@ -256,6 +256,62 @@ export function createRender(options) {
       }
     } else {
       // 中间乱序
+      // 中间对比删除老节点，因为在老节点中有但在新节点中没有
+      let s1 = i;
+      let s2 = i;
+      // 检测完的后面还有节点，直接删除
+      const toBePatched = e2 - s2 + 1;
+      // 当前已经处理的节点数量
+      let patched = 0;
+
+      const keyToNewIndexMap = new Map();
+      // 1.遍历新节点的children中间部分
+      // 将节点的key和位置i对应起来
+      for (let i = s2; i <= e2; i++) {
+        const nextChild = c2[i];
+        keyToNewIndexMap.set(nextChild.key, i);
+      }
+
+      // 2.遍历老节点的children中间部分
+      // 判断老节点的key是否在新节点映射表里面
+      // 如果在新节点映射表里，取出对应的下标位置
+      // 如果不在新节点映射表里，需要重新遍历
+
+      for (let i = s1; i <= e1; i++) {
+        const prevChild = c1[i];
+
+        // 优化
+        if (patched >= toBePatched) {
+          remove(prevChild.el);
+          continue;
+        }
+
+        let newIndex;
+        // 用户写节点的key了
+        if (prevChild.key != null) {
+          // 取出旧节点在新节点数组中位置
+          newIndex = keyToNewIndexMap.get(prevChild.key);
+        } else {
+          // 用户没写节点的key，在映射表里就不会存在
+          // 需要遍历新节点逐个与老节点对比直到找到新老节点一样的位置，说明新老节点数组里都有该节点
+          for (let j = s2; j < e2; j++) {
+            if (isSomeVNodeType(prevChild, c2[j])) {
+              newIndex = j;
+              break;
+            }
+          }
+        }
+
+        // newIndex是undefined时说明新节点数组中不存在该老节点
+        // 需要删除
+        if (newIndex === undefined) {
+          remove(prevChild.el);
+        } else {
+          patch(prevChild, c2[newIndex], container, parentComponent, null);
+          // 每处理完一个就记录一次
+          patched++;
+        }
+      }
     }
   }
 
