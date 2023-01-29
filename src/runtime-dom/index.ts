@@ -43,7 +43,10 @@ const render: any = createRender({
 });
 
 // 包装了渲染器的api
+// ...args是用户传来的参数
 export function createApp(...args) {
+  // 实际调用了runtime-core的render.ts中的createRender
+  // 它返回{ createApp: createAppAPI(render) }
   return render.createApp(...args);
 }
 

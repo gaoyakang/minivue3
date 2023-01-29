@@ -6,12 +6,13 @@ export const Fragment = Symbol("Fragment");
 export const Text = Symbol("Text");
 
 // type：需要处理的是什么类型component还是element
-export function createVNode(type, props?, children?) {
+export function createVNode(type, props?: any, children?: string | Array<any>) {
   const vnode = {
-    type,
-    props,
-    children,
     el: null,
+    component: null,
+    type,
+    props: props || {},
+    children,
     key: props && props.key,
     shapeFlag: getShapeFlag(type),
   };
