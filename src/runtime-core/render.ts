@@ -4,6 +4,7 @@ import { ShapeFlags } from "../shared/ShapeFlags";
 import { createComponentInstance, setupComponent } from "./component";
 import { shouldUpdateComponent } from "./componentUpdateUtils";
 import { createAppAPI } from "./createApp";
+import { queueJobs } from "./scheduler";
 import { Fragment, Text } from "./vnode";
 
 // 依靠渲染器实现不同平台注入
@@ -99,52 +100,61 @@ export function createRender(options) {
   function setupRenderEffect(instance: any, initialVNode, container, anchor) {
     // 当setup数据变化，render中的视图也要变化
     // effect先收集相关依赖，等修改值时自动触发依赖
-    instance.update = effect(() => {
-      // 初始化节点
-      if (!instance.isMounted) {
-        // console.log("init");
+    instance.update = effect(
+      () => {
+        // 初始化节点
+        if (!instance.isMounted) {
+          // console.log("init");
 
-        // 获取组件对象setup返回的对象的代理对象，挂载到render上
-        // 这样render中就能访问到setup中的数据
-        const { proxy } = instance;
+          // 获取组件对象setup返回的对象的代理对象，挂载到render上
+          // 这样render中就能访问到setup中的数据
+          const { proxy } = instance;
 
-        // render的内部调用了h(),它实际是createVNode()，即最终返回的是一个vnode
-        // 该vnode可能是个component类型，也可能是element类型，需要进一步patch拆解
-        // 调用call将代理的setup返回的对象挂到render上
-        const subTree = (instance.subTree = instance.render.call(proxy));
+          // render的内部调用了h(),它实际是createVNode()，即最终返回的是一个vnode
+          // 该vnode可能是个component类型，也可能是element类型，需要进一步patch拆解
+          // 调用call将代理的setup返回的对象挂到render上
+          const subTree = (instance.subTree = instance.render.call(proxy));
 
-        // 递归调用patch，这里的递归是在App组件解析完了后的patch
-        patch(null, subTree, container, instance, anchor);
+          // 递归调用patch，这里的递归是在App组件解析完了后的patch
+          patch(null, subTree, container, instance, anchor);
 
-        initialVNode.el = subTree.el;
+          initialVNode.el = subTree.el;
 
-        // 初始化节点完成，下次不会再调用
-        instance.isMounted = true;
-      } else {
-        // 更新节点
-        // 组件相关
-        const { next, vnode } = instance;
-        if (next) {
-          next.el = vnode.el;
-          updateComponentPreRender(instance, next);
+          // 初始化节点完成，下次不会再调用
+          instance.isMounted = true;
+        } else {
+          // 更新节点
+          // 组件相关
+          const { next, vnode } = instance;
+          if (next) {
+            next.el = vnode.el;
+            updateComponentPreRender(instance, next);
+          }
+
+          // 获取组件对象setup返回的对象的代理对象，挂载到render上
+          // 这样render中就能访问到setup中的数据
+          const { proxy } = instance;
+
+          // render的内部调用了h(),它实际是createVNode()，即最终返回的是一个vnode
+          // 该vnode可能是个component类型，也可能是element类型，需要进一步patch拆解
+          // 调用call将代理的setup返回的对象挂到render上
+          const subTree = instance.render.call(proxy);
+          const prevSubTree = instance.subTree;
+          instance.subTree = subTree;
+          // console.log("subtree:", subTree);
+          // console.log("prevSubTree:", prevSubTree);
+
+          patch(prevSubTree, subTree, container, instance, anchor);
         }
-
-        // 获取组件对象setup返回的对象的代理对象，挂载到render上
-        // 这样render中就能访问到setup中的数据
-        const { proxy } = instance;
-
-        // render的内部调用了h(),它实际是createVNode()，即最终返回的是一个vnode
-        // 该vnode可能是个component类型，也可能是element类型，需要进一步patch拆解
-        // 调用call将代理的setup返回的对象挂到render上
-        const subTree = instance.render.call(proxy);
-        const prevSubTree = instance.subTree;
-        instance.subTree = subTree;
-        // console.log("subtree:", subTree);
-        // console.log("prevSubTree:", prevSubTree);
-
-        patch(prevSubTree, subTree, container, instance, anchor);
+      },
+      {
+        scheduler() {
+          // nexttick实现，在下一次触发时候使用这里的微任务逻辑实现更新
+          // 这里收集的是重复的同步任务，合并在一起在下个执行前一起修改
+          queueJobs(instance.update);
+        },
       }
-    });
+    );
   }
 
   //处理element类型vnode
