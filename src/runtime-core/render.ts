@@ -2,6 +2,7 @@ import { effect } from "../reactivity/effect";
 import { EMPTY_OBJ } from "../shared";
 import { ShapeFlags } from "../shared/ShapeFlags";
 import { createComponentInstance, setupComponent } from "./component";
+import { shouldUpdateComponent } from "./componentUpdateUtils";
 import { createAppAPI } from "./createApp";
 import { Fragment, Text } from "./vnode";
 
@@ -51,9 +52,24 @@ export function createRender(options) {
 
   // 处理component类型的vnode
   function processComponent(n1, n2, container, parentComponent, anchor) {
-    // 挂载过程
-    // 挂载根节点前n1老节点还不存在
-    mountComponent(n2, container, parentComponent, anchor);
+    if (!n1) {
+      // 挂载过程
+      // 挂载根节点前n1老节点还不存在
+      mountComponent(n2, container, parentComponent, anchor);
+    } else {
+      updateComponent(n1, n2);
+    }
+  }
+  // 组件更新逻辑
+  function updateComponent(n1, n2) {
+    const instance = (n2.component = n1.component);
+    if (shouldUpdateComponent(n1, n2)) {
+      instance.next = n2;
+      instance.update();
+    } else {
+      n2.el = n1.el;
+      instance.vnode = n2;
+    }
   }
 
   // component类型的vnode挂载过程
@@ -65,7 +81,10 @@ export function createRender(options) {
   ) {
     // 创建组件实例(实际是个包含vnode的对象)
     // 后期可能会调用与组件相关的内容，所以抽象出组件实例
-    const instance = createComponentInstance(initialVNode, parentComponent);
+    const instance = (initialVNode.component = createComponentInstance(
+      initialVNode,
+      parentComponent
+    ));
 
     // 组件实例设置
     // 就是把组件对象上的setup结果和render挂载到组件实例上
@@ -80,7 +99,7 @@ export function createRender(options) {
   function setupRenderEffect(instance: any, initialVNode, container, anchor) {
     // 当setup数据变化，render中的视图也要变化
     // effect先收集相关依赖，等修改值时自动触发依赖
-    effect(() => {
+    instance.update = effect(() => {
       // 初始化节点
       if (!instance.isMounted) {
         // console.log("init");
@@ -103,6 +122,13 @@ export function createRender(options) {
         instance.isMounted = true;
       } else {
         // 更新节点
+        // 组件相关
+        const { next, vnode } = instance;
+        if (next) {
+          next.el = vnode.el;
+          updateComponentPreRender(instance, next);
+        }
+
         // 获取组件对象setup返回的对象的代理对象，挂载到render上
         // 这样render中就能访问到setup中的数据
         const { proxy } = instance;
@@ -386,7 +412,7 @@ export function createRender(options) {
         } else {
           // 用户没写节点的key，在映射表里就不会存在
           // 需要遍历新节点逐个与老节点对比直到找到新老节点一样的位置，说明新老节点数组里都有该节点
-          for (let j = s2; j < e2; j++) {
+          for (let j = s2; j <= e2; j++) {
             if (isSomeVNodeType(prevChild, c2[j])) {
               newIndex = j;
               break;
@@ -497,6 +523,12 @@ export function createRender(options) {
   return {
     createApp: createAppAPI(render),
   };
+}
+
+function updateComponentPreRender(instance, nextVNode) {
+  instance.vnode = nextVNode;
+  instance.next = null;
+  instance.props = nextVNode.props;
 }
 
 // 最长递增子序列

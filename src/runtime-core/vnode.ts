@@ -9,7 +9,7 @@ export const Text = Symbol("Text");
 export function createVNode(type, props?: any, children?: string | Array<any>) {
   const vnode = {
     el: null,
-    component: null,
+    component: null, // 获取effect返回的runner
     type,
     props: props || {},
     children,
