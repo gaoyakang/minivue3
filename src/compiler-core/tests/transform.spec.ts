@@ -3,7 +3,7 @@ import { baseParse } from "../src/parse";
 import { transform } from "../src/transform";
 
 describe("transform", () => {
-  it.only("happy path", () => {
+  it("happy path", () => {
     // 0.生成ast语法树
     const ast = baseParse("<div>hi,{{message}}</div>");
 
