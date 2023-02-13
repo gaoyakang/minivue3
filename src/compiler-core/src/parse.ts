@@ -49,13 +49,52 @@ function advanceBy(context: any, length: number) {
 function parseChildren(context) {
   const nodes: any = [];
   let node;
+  const s = context.source;
   // 解析插值
-  if (context.source.startsWith("{{")) {
+  if (s.startsWith("{{")) {
     node = parseInterplation(context);
+  } else if (s[0] === "<") {
+    if (/[a-z]/i.test(s[1])) {
+      node = parseElement(context);
+    }
   }
 
   nodes.push(node);
   return nodes;
+}
+
+// 解析element
+const enum TagTypes {
+  Start,
+  End,
+}
+function parseElement(context: any) {
+  // 解析左半边tag
+  const element = parseTag(context, TagTypes.Start);
+  // 解析右半边tag
+  parseTag(context, TagTypes.End);
+  return element;
+}
+
+// 解析tag
+function parseTag(context: any, type: TagTypes) {
+  // 1.解析tag
+
+  const match: any = /^<\/?([a-z]*)/i.exec(context.source);
+  // console.log(match);
+  const tag = match[1];
+
+  // 2.删除解析完成的内容
+  advanceBy(context, match[0].length); //删掉解析过的tag
+  advanceBy(context, 1); //删掉>
+
+  // 遇到tag结束标签直接结束
+  if (type === TagTypes.End) return;
+
+  return {
+    type: NodeTypes.ELEMENT,
+    tag,
+  };
 }
 
 // 创建根节点
