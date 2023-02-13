@@ -24,12 +24,12 @@ function parseInterplation(context) {
 
   // 获取花括号内的内容
   const rawContentLength = closeIndex - openDelimiter.length;
-  let rowContent = context.source.slice(0, rawContentLength);
+  let rowContent = parseTextData(context, rawContentLength);
   // 去除左右空格
   const content = rowContent.trim();
 
   // 删除花括号内的内容
-  advanceBy(context, rawContentLength + closeDelimiter.length);
+  advanceBy(context, closeDelimiter.length);
 
   return {
     type: NodeTypes.INTERPOLATION,
@@ -54,13 +54,37 @@ function parseChildren(context) {
   if (s.startsWith("{{")) {
     node = parseInterplation(context);
   } else if (s[0] === "<") {
+    // 解析element
     if (/[a-z]/i.test(s[1])) {
       node = parseElement(context);
     }
   }
 
+  // 解析text
+  if (!node) {
+    node = parseText(context);
+  }
+
   nodes.push(node);
   return nodes;
+}
+
+// 解析text
+function parseText(context: any) {
+  // 获取content内容
+  const content = parseTextData(context, context.source.length);
+  return {
+    type: NodeTypes.TEXT,
+    content,
+  };
+}
+
+function parseTextData(context: any, length: number) {
+  // 1.获取当前content
+  const content = context.source.slice(0, length);
+  // 2.推进
+  advanceBy(context, length);
+  return content;
 }
 
 // 解析element
