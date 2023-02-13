@@ -5,7 +5,7 @@ export function baseParse(content: string) {
   const context = createParseContext(content);
 
   // 创建根节点
-  return createRoot(parseChildren(context));
+  return createRoot(parseChildren(context, ""));
 }
 
 // 解析插值
@@ -46,33 +46,54 @@ function advanceBy(context: any, length: number) {
 }
 
 // 解析子配置
-function parseChildren(context) {
+function parseChildren(context, parentTag) {
   const nodes: any = [];
-  let node;
-  const s = context.source;
-  // 解析插值
-  if (s.startsWith("{{")) {
-    node = parseInterplation(context);
-  } else if (s[0] === "<") {
-    // 解析element
-    if (/[a-z]/i.test(s[1])) {
-      node = parseElement(context);
+  while (!isEnd(context, parentTag)) {
+    let node;
+    const s = context.source;
+    // 解析插值
+    if (s.startsWith("{{")) {
+      node = parseInterplation(context);
+    } else if (s[0] === "<") {
+      // 解析element
+      if (/[a-z]/i.test(s[1])) {
+        node = parseElement(context);
+      }
     }
-  }
 
-  // 解析text
-  if (!node) {
-    node = parseText(context);
-  }
+    // 解析text
+    if (!node) {
+      node = parseText(context);
+    }
 
-  nodes.push(node);
+    nodes.push(node);
+  }
   return nodes;
 }
 
+// 判断模板是否解析完了
+function isEnd(context: any, parentTag) {
+  // 遇到结束标签
+  const s = context.source;
+  if (parentTag && s.startsWith(`</${parentTag}>`)) {
+    return true;
+  }
+  // source有值的时候
+  return !s;
+}
 // 解析text
 function parseText(context: any) {
+  // 获取到text内容最后一位下标
+  let endIndex = context.source.length;
+  let endToken = "{{";
+  const index = context.source.indexOf(endToken);
+  if (index != -1) {
+    endIndex = index;
+  }
+
   // 获取content内容
-  const content = parseTextData(context, context.source.length);
+  const content = parseTextData(context, endIndex);
+
   return {
     type: NodeTypes.TEXT,
     content,
@@ -94,7 +115,9 @@ const enum TagTypes {
 }
 function parseElement(context: any) {
   // 解析左半边tag
-  const element = parseTag(context, TagTypes.Start);
+  const element: any = parseTag(context, TagTypes.Start);
+  element.children = parseChildren(context, element.tag);
+
   // 解析右半边tag
   parseTag(context, TagTypes.End);
   return element;
