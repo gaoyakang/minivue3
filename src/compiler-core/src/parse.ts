@@ -5,7 +5,7 @@ export function baseParse(content: string) {
   const context = createParseContext(content);
 
   // 创建根节点
-  return createRoot(parseChildren(context, ""));
+  return createRoot(parseChildren(context, []));
 }
 
 // 解析插值
@@ -46,9 +46,9 @@ function advanceBy(context: any, length: number) {
 }
 
 // 解析子配置
-function parseChildren(context, parentTag) {
+function parseChildren(context, ancestors) {
   const nodes: any = [];
-  while (!isEnd(context, parentTag)) {
+  while (!isEnd(context, ancestors)) {
     let node;
     const s = context.source;
     // 解析插值
@@ -57,7 +57,7 @@ function parseChildren(context, parentTag) {
     } else if (s[0] === "<") {
       // 解析element
       if (/[a-z]/i.test(s[1])) {
-        node = parseElement(context);
+        node = parseElement(context, ancestors);
       }
     }
 
@@ -72,23 +72,36 @@ function parseChildren(context, parentTag) {
 }
 
 // 判断模板是否解析完了
-function isEnd(context: any, parentTag) {
+function isEnd(context: any, ancestors) {
   // 遇到结束标签
   const s = context.source;
-  if (parentTag && s.startsWith(`</${parentTag}>`)) {
-    return true;
+  if (s.startsWith("</")) {
+    // 倒着循环栈结构速度更快
+    for (let i = ancestors.length - 1; i >= 0; i--) {
+      const tag = ancestors[i].tag;
+      // 判断是否是一个闭合标签
+      if (startsWithEndTagOpen(s, tag)) {
+        return true;
+      }
+      if (s.slice(2, 2 + tag.length) === tag) {
+        return true;
+      }
+    }
   }
   // source有值的时候
   return !s;
 }
+
 // 解析text
 function parseText(context: any) {
   // 获取到text内容最后一位下标
   let endIndex = context.source.length;
-  let endToken = "{{";
-  const index = context.source.indexOf(endToken);
-  if (index != -1) {
-    endIndex = index;
+  let endTokens = ["<", "{{"];
+  for (let i = 0; i < endTokens.length; i++) {
+    const index = context.source.indexOf(endTokens[i]);
+    if (index != -1 && endIndex > index) {
+      endIndex = index;
+    }
   }
 
   // 获取content内容
@@ -99,7 +112,6 @@ function parseText(context: any) {
     content,
   };
 }
-
 function parseTextData(context: any, length: number) {
   // 1.获取当前content
   const content = context.source.slice(0, length);
@@ -113,14 +125,36 @@ const enum TagTypes {
   Start,
   End,
 }
-function parseElement(context: any) {
+function parseElement(context: any, ancestors) {
   // 解析左半边tag
   const element: any = parseTag(context, TagTypes.Start);
-  element.children = parseChildren(context, element.tag);
+
+  // 收集对称的标签用于后期验证标签是否未闭合
+  ancestors.push(element);
+
+  // 循环解析标签内的内容
+  element.children = parseChildren(context, ancestors);
+
+  // 解析完成后销毁标签
+  ancestors.pop();
 
   // 解析右半边tag
-  parseTag(context, TagTypes.End);
+  if (startsWithEndTagOpen(context.source, element.tag)) {
+    // 开始标签和结束标签一一对应时，解析对应内容
+    parseTag(context, TagTypes.End);
+  } else {
+    // 开始标签和结束标签不对应时，抛出错误
+    throw new Error(`缺少闭合标签:${element.tag}`);
+  }
+
   return element;
+}
+// 获取闭合标签
+function startsWithEndTagOpen(source, tag) {
+  return (
+    source.startsWith("</") &&
+    source.slice(2, 2 + tag.length).toLowerCase() === tag.toLowerCase()
+  );
 }
 
 // 解析tag
