@@ -7,7 +7,6 @@
     "test": "jest",
     "build": "rollup -c rollup.config.js"
   },
-  "type": "module",
   "devDependencies": {
     "@babel/core": "^7.20.7",
     "@babel/preset-env": "^7.20.2",
