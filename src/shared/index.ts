@@ -5,6 +5,8 @@ export const isObject = (val) => {
   return val != undefined && typeof val === "object";
 };
 
+export const isString = (value) => typeof value === "string";
+
 export const hasChanged = (val, newVal) => {
   return !Object.is(val, newVal);
 };

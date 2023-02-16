@@ -6,17 +6,23 @@ export function transform(root, options = {}) {
   const context = createTransformContext(root, options);
   //1.遍历：深度优先搜索
   traverseNode(root, context);
-  //2.修改text conten
-  createRootCodegen(root, context);
+  //2.修改text content
+  createRootCodegen(root);
   root.helpers = [...context.helpers.keys()];
 }
 
 function traverseNode(node: any, context) {
   // 查看是否有配置项plugin
   const nodeTransforms = context.nodeTransforms;
+
+  // 调用顺序设计
+  const exitFns: any = [];
   for (let i = 0; i < nodeTransforms.length; i++) {
     const transform = nodeTransforms[i];
-    transform(node);
+    const onExit = transform(node, context);
+    if (onExit) {
+      exitFns.push(onExit);
+    }
   }
 
   switch (node.type) {
@@ -25,11 +31,15 @@ function traverseNode(node: any, context) {
       break;
     case NodeTypes.ROOT:
     case NodeTypes.ELEMENT:
-      // 遍历子节点
       traverseChildren(node, context);
       break;
     default:
       break;
+  }
+
+  let i = exitFns.length;
+  while (i--) {
+    exitFns[i]();
   }
 }
 
@@ -54,9 +64,11 @@ function traverseChildren(node: any, context: any) {
     traverseNode(node, context);
   }
 }
-function createRootCodegen(
-  root: any,
-  context: { root: any; nodeTransforms: any }
-) {
-  root.codegenNode = root.children[0];
+function createRootCodegen(root: any) {
+  const child = root.children[0];
+  if (child.type === NodeTypes.ELEMENT) {
+    root.codegenNode = child.codegenNode;
+  } else {
+    root.codegenNode = root.children[0];
+  }
 }
