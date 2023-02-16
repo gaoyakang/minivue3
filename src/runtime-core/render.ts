@@ -113,7 +113,10 @@ export function createRender(options) {
           // render的内部调用了h(),它实际是createVNode()，即最终返回的是一个vnode
           // 该vnode可能是个component类型，也可能是element类型，需要进一步patch拆解
           // 调用call将代理的setup返回的对象挂到render上
-          const subTree = (instance.subTree = instance.render.call(proxy));
+          const subTree = (instance.subTree = instance.render.call(
+            proxy,
+            proxy
+          ));
 
           // 递归调用patch，这里的递归是在App组件解析完了后的patch
           patch(null, subTree, container, instance, anchor);
@@ -138,7 +141,7 @@ export function createRender(options) {
           // render的内部调用了h(),它实际是createVNode()，即最终返回的是一个vnode
           // 该vnode可能是个component类型，也可能是element类型，需要进一步patch拆解
           // 调用call将代理的setup返回的对象挂到render上
-          const subTree = instance.render.call(proxy);
+          const subTree = instance.render.call(proxy, proxy);
           const prevSubTree = instance.subTree;
           instance.subTree = subTree;
           // console.log("subtree:", subTree);

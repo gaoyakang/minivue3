@@ -90,9 +90,10 @@ function genExpression(node, context) {
 function genElement(node, context) {
   const { push, helper } = context;
   const { tag, children, props } = node;
+  console.log(tag);
 
   push(`${helper(CREATE_ELEMENT_VNODE)}(`);
-  genNodeList(genNullable([tag, props, children]), context);
+  genNodeList(genNullable([`"${tag}"`, props, children]), context);
   push(")");
 }
 

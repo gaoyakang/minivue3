@@ -5,6 +5,8 @@ import { ShapeFlags } from "../shared/ShapeFlags";
 export const Fragment = Symbol("Fragment");
 export const Text = Symbol("Text");
 
+export { createVNode as createElementVNode };
+
 // type：需要处理的是什么类型component还是element
 export function createVNode(type, props?: any, children?: string | Array<any>) {
   const vnode = {
